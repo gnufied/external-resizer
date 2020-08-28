@@ -357,6 +357,7 @@ func (ctrl *resizeController) pvNeedResize(pvc *v1.PersistentVolumeClaim, pv *v1
 	pvSize := pv.Spec.Capacity[v1.ResourceStorage]
 	requestSize := pvc.Spec.Resources.Requests[v1.ResourceStorage]
 	if pvSize.Cmp(requestSize) >= 0 {
+		klog.V(4).Infof("pvc %s is already bigger than requested size", util.PVCKey(pvc))
 		// If PV size is equal or bigger than request size, that means we have already resized PV.
 		// In this case we need to check PVC's condition.
 		// 1. If PVC in PersistentVolumeClaimResizing condition, we should continue to perform the
@@ -368,6 +369,7 @@ func (ctrl *resizeController) pvNeedResize(pvc *v1.PersistentVolumeClaim, pv *v1
 			// This is case 2.
 			return false
 		}
+		klog.V(4).Infof("pvc %s is bigger but has missing FileSystemResizeRequired conditions", util.PVCKey(pvc))
 		// This is case 1.
 		return true
 	}
