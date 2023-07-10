@@ -40,7 +40,7 @@ func (ctrl *resizeController) markControllerResizeInProgress(
 
 	newPVC := pvc.DeepCopy()
 	newPVC.Status.Conditions = util.MergeResizeConditionsOfPVC(newPVC.Status.Conditions, conditions)
-	newPVC.Status.AllocatedResourceStatus = map[v1.ResourceName]v1.ClaimResourceStatus{
+	newPVC.Status.AllocatedResourceStatuses = map[v1.ResourceName]v1.ClaimResourceStatus{
 		v1.ResourceStorage: v1.PersistentVolumeClaimControllerResizeInProgress,
 	}
 	newPVC.Status.AllocatedResources = v1.ResourceList{v1.ResourceStorage: newSize}
@@ -64,7 +64,7 @@ func (ctrl *resizeController) markForPendingNodeExpansion(pvc *v1.PersistentVolu
 	newPVC := pvc.DeepCopy()
 	newPVC.Status.Conditions = util.MergeResizeConditionsOfPVC(newPVC.Status.Conditions,
 		[]v1.PersistentVolumeClaimCondition{pvcCondition})
-	newPVC.Status.AllocatedResourceStatus = map[v1.ResourceName]v1.ClaimResourceStatus{
+	newPVC.Status.AllocatedResourceStatuses = map[v1.ResourceName]v1.ClaimResourceStatus{
 		v1.ResourceStorage: v1.PersistentVolumeClaimNodeResizePending,
 	}
 	updatedPVC, err := ctrl.patchClaim(pvc, newPVC, true /* addResourceVersionCheck */)
@@ -82,7 +82,7 @@ func (ctrl *resizeController) markForPendingNodeExpansion(pvc *v1.PersistentVolu
 
 func (ctrl *resizeController) markControllerExpansionFailed(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeClaim, error) {
 	newPVC := pvc.DeepCopy()
-	newPVC.Status.AllocatedResourceStatus = map[v1.ResourceName]v1.ClaimResourceStatus{
+	newPVC.Status.AllocatedResourceStatuses = map[v1.ResourceName]v1.ClaimResourceStatus{
 		v1.ResourceStorage: v1.PersistentVolumeClaimControllerResizeFailed,
 	}
 
@@ -105,7 +105,7 @@ func (ctrl *resizeController) markOverallExpansionAsFinished(
 	newPVC := pvc.DeepCopy()
 	newPVC.Status.Capacity[v1.ResourceStorage] = newSize
 	newPVC.Status.Conditions = util.MergeResizeConditionsOfPVC(pvc.Status.Conditions, []v1.PersistentVolumeClaimCondition{})
-	newPVC.Status.AllocatedResourceStatus = nil
+	newPVC.Status.AllocatedResourceStatuses = nil
 
 	updatedPVC, err := ctrl.patchClaim(pvc, newPVC, true /* addResourceVersionCheck */)
 	if err != nil {

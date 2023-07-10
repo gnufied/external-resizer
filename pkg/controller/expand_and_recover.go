@@ -42,7 +42,7 @@ func (ctrl *resizeController) expandAndRecover(pvc *v1.PersistentVolumeClaim, pv
 	pvSize := pv.Spec.Capacity[v1.ResourceStorage]
 
 	newSize := pvcSpecSize
-	resizeStatus := pvc.Status.AllocatedResourceStatus[v1.ResourceStorage]
+	resizeStatus := pvc.Status.AllocatedResourceStatuses[v1.ResourceStorage]
 
 	var allocatedSize *resource.Quantity
 	t, ok := pvc.Status.AllocatedResources[v1.ResourceStorage]

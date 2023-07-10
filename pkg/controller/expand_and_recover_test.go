@@ -136,7 +136,7 @@ func TestExpandAndRecover(t *testing.T) {
 				t.Fatalf("expansion failed: expected resize called %t, got %t", test.expectResizeCall, resizeCalled)
 			}
 
-			actualResizeStatus := pvc.Status.AllocatedResourceStatus[v1.ResourceStorage]
+			actualResizeStatus := pvc.Status.AllocatedResourceStatuses[v1.ResourceStorage]
 
 			if actualResizeStatus != test.expectedResizeStatus {
 				t.Fatalf("expected resize status to be %s, got %s", test.expectedResizeStatus, actualResizeStatus)
@@ -175,7 +175,7 @@ func getTestPVC(volumeName string, specSize, statusSize, allocatedSize string, r
 		pvc.Status.AllocatedResources = v1.ResourceList{v1.ResourceStorage: resource.MustParse(allocatedSize)}
 	}
 	if len(resizeStatus) > 0 {
-		pvc.Status.AllocatedResourceStatus = map[v1.ResourceName]v1.ClaimResourceStatus{
+		pvc.Status.AllocatedResourceStatuses = map[v1.ResourceName]v1.ClaimResourceStatus{
 			v1.ResourceStorage: resizeStatus,
 		}
 	}
