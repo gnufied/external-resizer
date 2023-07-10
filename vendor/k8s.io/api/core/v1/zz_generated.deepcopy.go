@@ -793,6 +793,11 @@ func (in *Container) DeepCopyInto(out *Container) {
 		*out = make([]ContainerResizePolicy, len(*in))
 		copy(*out, *in)
 	}
+	if in.RestartPolicy != nil {
+		in, out := &in.RestartPolicy, &out.RestartPolicy
+		*out = new(ContainerRestartPolicy)
+		**out = **in
+	}
 	if in.VolumeMounts != nil {
 		in, out := &in.VolumeMounts, &out.VolumeMounts
 		*out = make([]VolumeMount, len(*in))
@@ -1419,6 +1424,11 @@ func (in *EphemeralContainerCommon) DeepCopyInto(out *EphemeralContainerCommon) 
 		in, out := &in.ResizePolicy, &out.ResizePolicy
 		*out = make([]ContainerResizePolicy, len(*in))
 		copy(*out, *in)
+	}
+	if in.RestartPolicy != nil {
+		in, out := &in.RestartPolicy, &out.RestartPolicy
+		*out = new(ContainerRestartPolicy)
+		**out = **in
 	}
 	if in.VolumeMounts != nil {
 		in, out := &in.VolumeMounts, &out.VolumeMounts
@@ -3072,10 +3082,12 @@ func (in *PersistentVolumeClaimStatus) DeepCopyInto(out *PersistentVolumeClaimSt
 			(*out)[key] = val.DeepCopy()
 		}
 	}
-	if in.ResizeStatus != nil {
-		in, out := &in.ResizeStatus, &out.ResizeStatus
-		*out = new(PersistentVolumeClaimResizeStatus)
-		**out = **in
+	if in.AllocatedResourceStatuses != nil {
+		in, out := &in.AllocatedResourceStatuses, &out.AllocatedResourceStatuses
+		*out = make(map[ResourceName]ClaimResourceStatus, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }

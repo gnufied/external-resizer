@@ -695,6 +695,12 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: encodingVersion
       type:
         scalar: string
+    - name: servedVersions
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: associative
 - name: io.k8s.api.apiserverinternal.v1alpha1.StorageVersion
   map:
     fields:
@@ -4306,6 +4312,9 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         namedType: io.k8s.api.core.v1.ResourceRequirements
       default: {}
+    - name: restartPolicy
+      type:
+        scalar: string
     - name: securityContext
       type:
         namedType: io.k8s.api.core.v1.SecurityContext
@@ -4723,6 +4732,9 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         namedType: io.k8s.api.core.v1.ResourceRequirements
       default: {}
+    - name: restartPolicy
+      type:
+        scalar: string
     - name: securityContext
       type:
         namedType: io.k8s.api.core.v1.SecurityContext
@@ -5777,6 +5789,12 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
+    - name: allocatedResourceStatuses
+      type:
+        map:
+          elementType:
+            scalar: string
+          elementRelationship: separable
     - name: allocatedResources
       type:
         map:
@@ -5796,9 +5814,6 @@ var schemaYAML = typed.YAMLObject(`types:
           keys:
           - type
     - name: phase
-      type:
-        scalar: string
-    - name: resizeStatus
       type:
         scalar: string
 - name: io.k8s.api.core.v1.PersistentVolumeClaimTemplate
@@ -8343,10 +8358,6 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         namedType: io.k8s.api.extensions.v1beta1.NetworkPolicySpec
       default: {}
-    - name: status
-      type:
-        namedType: io.k8s.api.extensions.v1beta1.NetworkPolicyStatus
-      default: {}
 - name: io.k8s.api.extensions.v1beta1.NetworkPolicyEgressRule
   map:
     fields:
@@ -8426,17 +8437,6 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
-- name: io.k8s.api.extensions.v1beta1.NetworkPolicyStatus
-  map:
-    fields:
-    - name: conditions
-      type:
-        list:
-          elementType:
-            namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Condition
-          elementRelationship: associative
-          keys:
-          - type
 - name: io.k8s.api.extensions.v1beta1.ReplicaSet
   map:
     fields:
@@ -10087,10 +10087,6 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         namedType: io.k8s.api.networking.v1.NetworkPolicySpec
       default: {}
-    - name: status
-      type:
-        namedType: io.k8s.api.networking.v1.NetworkPolicyStatus
-      default: {}
 - name: io.k8s.api.networking.v1.NetworkPolicyEgressRule
   map:
     fields:
@@ -10170,17 +10166,6 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
-- name: io.k8s.api.networking.v1.NetworkPolicyStatus
-  map:
-    fields:
-    - name: conditions
-      type:
-        list:
-          elementType:
-            namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Condition
-          elementRelationship: associative
-          keys:
-          - type
 - name: io.k8s.api.networking.v1.ServiceBackendPort
   map:
     fields:

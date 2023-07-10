@@ -558,23 +558,23 @@ const (
 )
 
 // +enum
-type PersistentVolumeClaimResizeStatus string
+type ClaimResourceStatus string
 
 const (
-	// When expansion is complete, the empty string is set by resize controller or kubelet.
-	PersistentVolumeClaimNoExpansionInProgress PersistentVolumeClaimResizeStatus = ""
 	// State set when resize controller starts expanding the volume in control-plane
-	PersistentVolumeClaimControllerExpansionInProgress PersistentVolumeClaimResizeStatus = "ControllerExpansionInProgress"
+	PersistentVolumeClaimControllerResizeInProgress ClaimResourceStatus = "ControllerResizeInProgress"
+
 	// State set when expansion has failed in resize controller with a terminal error.
-	// Transient errors such as timeout should not set this status and should leave ResizeStatus
+	// Transient errors such as timeout should not set this status and should leave allocatedResourceStatus
 	// unmodified, so as resize controller can resume the volume expansion.
-	PersistentVolumeClaimControllerExpansionFailed PersistentVolumeClaimResizeStatus = "ControllerExpansionFailed"
+	PersistentVolumeClaimControllerResizeFailed ClaimResourceStatus = "ControllerResizeFailed"
+
 	// State set when resize controller has finished expanding the volume but further expansion is needed on the node.
-	PersistentVolumeClaimNodeExpansionPending PersistentVolumeClaimResizeStatus = "NodeExpansionPending"
+	PersistentVolumeClaimNodeResizePending ClaimResourceStatus = "NodeResizePending"
 	// State set when kubelet starts expanding the volume.
-	PersistentVolumeClaimNodeExpansionInProgress PersistentVolumeClaimResizeStatus = "NodeExpansionInProgress"
+	PersistentVolumeClaimNodeResizeInProgress ClaimResourceStatus = "NodeResizeInProgress"
 	// State set when expansion has failed in kubelet with a terminal error. Transient errors don't set NodeExpansionFailed.
-	PersistentVolumeClaimNodeExpansionFailed PersistentVolumeClaimResizeStatus = "NodeExpansionFailed"
+	PersistentVolumeClaimNodeResizeFailed ClaimResourceStatus = "NodeResizeFailed"
 )
 
 // PersistentVolumeClaimCondition contains details about state of pvc
@@ -626,13 +626,23 @@ type PersistentVolumeClaimStatus struct {
 	// +featureGate=RecoverVolumeExpansionFailure
 	// +optional
 	AllocatedResources ResourceList `json:"allocatedResources,omitempty" protobuf:"bytes,5,rep,name=allocatedResources,casttype=ResourceList,castkey=ResourceName"`
-	// resizeStatus stores status of resize operation.
-	// ResizeStatus is not set by default but when expansion is complete resizeStatus is set to empty
-	// string by resize controller or kubelet.
+
+	// resizestatus is tombstoned since the field was replaced by allocatedResourceStatus
+	// ResizeStatus *PersistentVolumeClaimResizeStatus `json:"resizeStatus,omitempty" protobuf:"bytes,6,opt,name=resizeStatus,casttype=PersistentVolumeClaimResizeStatus"`
+
+	// allocatedResourceStatuses stores status of resource being resized for the given PVC.
+	// If Expanding a PVC for more capacity - this field can be one of the following states:
+	// 	- pvc.status.allocatedResourceStatus['storage'] = "ControllerResizeInProgress"
+	//      - pvc.status.allocatedResourceStatus['storage'] = "ControllerResizeFailed"
+	//      - pvc.status.allocatedResourceStatus['storage'] = "NodeResizePending"
+	//      - pvc.status.allocatedResourceStatus['storage'] = "NodeResizeInProgress"
+	//      - pvc.status.allocatedResourceStatus['storage'] = "NodeResizeFailed"
+	// When this field is not set, it means that no resize operation is in progress for the given PVC.
 	// This is an alpha field and requires enabling RecoverVolumeExpansionFailure feature.
 	// +featureGate=RecoverVolumeExpansionFailure
+	// +mapType=granular
 	// +optional
-	ResizeStatus *PersistentVolumeClaimResizeStatus `json:"resizeStatus,omitempty" protobuf:"bytes,6,opt,name=resizeStatus,casttype=PersistentVolumeClaimResizeStatus"`
+	AllocatedResourceStatuses map[ResourceName]ClaimResourceStatus `json:"allocatedResourceStatuses,omitempty" protobuf:"bytes,7,rep,name=allocatedResourceStatuses"`
 }
 
 // +enum
@@ -2137,7 +2147,8 @@ type SecretEnvSource struct {
 
 // HTTPHeader describes a custom header to be used in HTTP probes
 type HTTPHeader struct {
-	// The header field name
+	// The header field name.
+	// This will be canonicalized upon output, so case-variant names will be understood as the same header.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// The header field value
 	Value string `json:"value" protobuf:"bytes,2,opt,name=value"`
@@ -2445,6 +2456,24 @@ type Container struct {
 	// +optional
 	// +listType=atomic
 	ResizePolicy []ContainerResizePolicy `json:"resizePolicy,omitempty" protobuf:"bytes,23,rep,name=resizePolicy"`
+	// RestartPolicy defines the restart behavior of individual containers in a pod.
+	// This field may only be set for init containers, and the only allowed value is "Always".
+	// For non-init containers or when this field is not specified,
+	// the restart behavior is defined by the Pod's restart policy and the container type.
+	// Setting the RestartPolicy as "Always" for the init container will have the following effect:
+	// this init container will be continually restarted on
+	// exit until all regular containers have terminated. Once all regular
+	// containers have completed, all init containers with restartPolicy "Always"
+	// will be shut down. This lifecycle differs from normal init containers and
+	// is often referred to as a "sidecar" container. Although this init
+	// container still starts in the init container sequence, it does not wait
+	// for the container to complete before proceeding to the next init
+	// container. Instead, the next init container starts immediately after this
+	// init container is started, or after any startupProbe has successfully
+	// completed.
+	// +featureGate=SidecarContainers
+	// +optional
+	RestartPolicy *ContainerRestartPolicy `json:"restartPolicy,omitempty" protobuf:"bytes,24,opt,name=restartPolicy,casttype=ContainerRestartPolicy"`
 	// Pod volumes to mount into the container's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -2839,6 +2868,14 @@ const (
 	RestartPolicyAlways    RestartPolicy = "Always"
 	RestartPolicyOnFailure RestartPolicy = "OnFailure"
 	RestartPolicyNever     RestartPolicy = "Never"
+)
+
+// ContainerRestartPolicy is the restart policy for a single container.
+// This may only be set for init containers and only allowed value is "Always".
+type ContainerRestartPolicy string
+
+const (
+	ContainerRestartPolicyAlways ContainerRestartPolicy = "Always"
 )
 
 // DNSPolicy defines how a pod's DNS will be configured.
@@ -3837,7 +3874,7 @@ type SeccompProfile struct {
 	// localhostProfile indicates a profile defined in a file on the node should be used.
 	// The profile must be preconfigured on the node to work.
 	// Must be a descending path, relative to the kubelet's configured seccomp profile location.
-	// Must only be set if type is "Localhost".
+	// Must be set if type is "Localhost". Must NOT be set for any other type.
 	// +optional
 	LocalhostProfile *string `json:"localhostProfile,omitempty" protobuf:"bytes,2,opt,name=localhostProfile"`
 }
@@ -3975,6 +4012,13 @@ type EphemeralContainerCommon struct {
 	// +optional
 	// +listType=atomic
 	ResizePolicy []ContainerResizePolicy `json:"resizePolicy,omitempty" protobuf:"bytes,23,rep,name=resizePolicy"`
+	// Restart policy for the container to manage the restart behavior of each
+	// container within a pod.
+	// This may only be set for init containers. You cannot set this field on
+	// ephemeral containers.
+	// +featureGate=SidecarContainers
+	// +optional
+	RestartPolicy *ContainerRestartPolicy `json:"restartPolicy,omitempty" protobuf:"bytes,24,opt,name=restartPolicy,casttype=ContainerRestartPolicy"`
 	// Pod volumes to mount into the container's filesystem. Subpath mounts are not allowed for ephemeral containers.
 	// Cannot be updated.
 	// +optional
@@ -4713,10 +4757,9 @@ type ServiceSpec struct {
 	// This feature depends on whether the underlying cloud-provider supports specifying
 	// the loadBalancerIP when a load balancer is created.
 	// This field will be ignored if the cloud-provider does not support the feature.
-	// Deprecated: This field was under-specified and its meaning varies across implementations,
-	// and it cannot support dual-stack.
-	// As of Kubernetes v1.24, users are encouraged to use implementation-specific annotations when available.
-	// This field may be removed in a future API version.
+	// Deprecated: This field was under-specified and its meaning varies across implementations.
+	// Using it is non-portable and it may not support dual-stack.
+	// Users are encouraged to use implementation-specific annotations when available.
 	// +optional
 	LoadBalancerIP string `json:"loadBalancerIP,omitempty" protobuf:"bytes,8,opt,name=loadBalancerIP"`
 
@@ -6801,12 +6844,9 @@ type WindowsSecurityContextOptions struct {
 	RunAsUserName *string `json:"runAsUserName,omitempty" protobuf:"bytes,3,opt,name=runAsUserName"`
 
 	// HostProcess determines if a container should be run as a 'Host Process' container.
-	// This field is alpha-level and will only be honored by components that enable the
-	// WindowsHostProcessContainers feature flag. Setting this field without the feature
-	// flag will result in errors when validating the Pod. All of a Pod's containers must
-	// have the same effective HostProcess value (it is not allowed to have a mix of HostProcess
-	// containers and non-HostProcess containers).  In addition, if HostProcess is true
-	// then HostNetwork must also be set to true.
+	// All of a Pod's containers must have the same effective HostProcess value
+	// (it is not allowed to have a mix of HostProcess containers and non-HostProcess containers).
+	// In addition, if HostProcess is true then HostNetwork must also be set to true.
 	// +optional
 	HostProcess *bool `json:"hostProcess,omitempty" protobuf:"bytes,4,opt,name=hostProcess"`
 }
