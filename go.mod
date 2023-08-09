@@ -67,9 +67,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace (
-	k8s.io/api => /home/hekumar/redhat/kubernetes/staging/src/k8s.io/api
-	k8s.io/apimachinery => /home/hekumar/redhat/kubernetes/staging/src/k8s.io/apimachinery
-	k8s.io/client-go => /home/hekumar/redhat/kubernetes/staging/src/k8s.io/client-go
-)
