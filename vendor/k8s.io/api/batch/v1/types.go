@@ -27,11 +27,6 @@ const (
 	// More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#label-selector-and-annotation-conventions
 	labelPrefix = "batch.kubernetes.io/"
 
-	// CronJobScheduledTimestampAnnotation is the scheduled timestamp annotation for the Job.
-	// It records the original/expected scheduled timestamp for the running job, represented in RFC3339.
-	// The CronJob controller adds this annotation if the CronJobsScheduledAnnotation feature gate (beta in 1.28) is enabled.
-	CronJobScheduledTimestampAnnotation = labelPrefix + "cronjob-scheduled-timestamp"
-
 	JobCompletionIndexAnnotation = labelPrefix + "job-completion-index"
 	// JobTrackingFinalizer is a finalizer for Job's pods. It prevents them from
 	// being deleted before being accounted in the Job status.
@@ -257,8 +252,8 @@ type JobSpec struct {
 	// checked against the backoffLimit. This field cannot be used in combination
 	// with restartPolicy=OnFailure.
 	//
-	// This field is beta-level. It can be used when the `JobPodFailurePolicy`
-	// feature gate is enabled (enabled by default).
+	// This field is alpha-level. To use this field, you must enable the
+	// `JobPodFailurePolicy` feature gate (disabled by default).
 	// +optional
 	PodFailurePolicy *PodFailurePolicy `json:"podFailurePolicy,omitempty" protobuf:"bytes,11,opt,name=podFailurePolicy"`
 
