@@ -50,6 +50,8 @@ func (ctrl *resizeController) expandAndRecover(pvc *v1.PersistentVolumeClaim, pv
 		return pvc, pv, fmt.Errorf("error getting object key for pvc %s: %v", pvc.Name, err), resizeNotCalled
 	}
 
+	inSlowSet := ctrl.slowSet.Contains(pvcKey)
+
 	var allocatedSize *resource.Quantity
 	t, ok := pvc.Status.AllocatedResources[v1.ResourceStorage]
 	if ok {
@@ -57,6 +59,7 @@ func (ctrl *resizeController) expandAndRecover(pvc *v1.PersistentVolumeClaim, pv
 	}
 
 	updateStatus := true
+	ctrl.markForSlowRetry(pvcKey, resizeStatus)
 
 	if pvSize.Cmp(pvcSpecSize) < 0 {
 		// PV is smaller than user requested size. In general some control-plane volume expansion
@@ -140,6 +143,12 @@ func (ctrl *resizeController) expandAndRecover(pvc *v1.PersistentVolumeClaim, pv
 	// If we are expanding volume to same size as before, then there is no point in changing
 	// status fields again.
 	if allocatedSize != nil && allocatedSize.Cmp(newSize) == 0 {
+		if inSlowSet {
+			msg := fmt.Sprintf("skipping volume expansion for pvc %s, because expansion previously failed with infeasible error", pvcKey)
+			klog.V(4).Infof(msg)
+			delayRetryError := util.NewDelayRetryError(msg, ctrl.slowSet.TimeRemaining(pvcKey))
+			return pvc, pv, delayRetryError, resizeNotCalled
+		}
 		klog.V(4).Infof("skipping updating status for pvc %s", pvcKey)
 		updateStatus = false
 	}
@@ -177,6 +186,13 @@ func (ctrl *resizeController) expandAndRecover(pvc *v1.PersistentVolumeClaim, pv
 
 	klog.V(4).InfoS("Update capacity of PV succeeded", "PV", klog.KObj(pv), "capacity", newSize.String())
 	return pvc, pv, nil, true
+}
+
+func (ctrl *resizeController) markForSlowRetry(pvcKey string, resizeStatus v1.ClaimResourceStatus) {
+	if resizeStatus == v1.PersistentVolumeClaimControllerResizeInfeasible ||
+		resizeStatus == v1.PersistentVolumeClaimNodeResizeInfeasible {
+		ctrl.slowSet.Add(pvcKey)
+	}
 }
 
 func (ctrl *resizeController) callResizeOnPlugin(
