@@ -25,22 +25,28 @@ const (
 	slowSetSleepDelay = 100 * time.Millisecond
 )
 
-type SlowSet struct {
+type FailureTimestamp[T ~string] struct {
+	FailureType T
+	Timestamp   time.Time
+}
+
+type SlowSet[T ~string] struct {
 	sync.RWMutex
 	// retentionTime is the time after which an item will be removed from the set
 	// this indicates, how long before an operation on pvc can be retried.
 	retentionTime time.Duration
-	workSet       map[string]time.Time
+	workSet       map[string]FailureTimestamp[T]
 }
 
-func NewSlowSet(retTime time.Duration) *SlowSet {
-	return &SlowSet{
+func NewSlowSet[T ~string](retTime time.Duration) *SlowSet[T] {
+	workSet := make(map[string]FailureTimestamp[T])
+	return &SlowSet[T]{
 		retentionTime: retTime,
-		workSet:       make(map[string]time.Time),
+		workSet:       workSet,
 	}
 }
 
-func (s *SlowSet) Add(key string) bool {
+func (s *SlowSet[T]) Add(key string, failureType T) bool {
 	s.Lock()
 	defer s.Unlock()
 
@@ -48,11 +54,11 @@ func (s *SlowSet) Add(key string) bool {
 		return false
 	}
 
-	s.workSet[key] = time.Now()
+	s.workSet[key] = FailureTimestamp[T]{FailureType: failureType, Timestamp: time.Now()}
 	return true
 }
 
-func (s *SlowSet) Contains(key string) bool {
+func (s *SlowSet[T]) Contains(key string) bool {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -60,24 +66,36 @@ func (s *SlowSet) Contains(key string) bool {
 	return ok
 }
 
-func (s *SlowSet) Remove(key string) {
+func (s *SlowSet[T]) RemoveAll(key string) {
 	s.Lock()
 	defer s.Unlock()
 
 	delete(s.workSet, key)
 }
 
-func (s *SlowSet) TimeRemaining(key string) time.Duration {
+func (s *SlowSet[T]) Remove(key string, failureType T) bool {
+	s.Lock()
+	defer s.Unlock()
+
+	failureTimestamp, ok := s.workSet[key]
+	if ok && failureTimestamp.FailureType == failureType {
+		delete(s.workSet, key)
+		return true
+	}
+	return false
+}
+
+func (s *SlowSet[T]) TimeRemaining(key string) time.Duration {
 	s.RLock()
 	defer s.RUnlock()
 
-	if startTime, ok := s.workSet[key]; ok {
-		return s.retentionTime - time.Since(startTime)
+	if startTimestamp, ok := s.workSet[key]; ok {
+		return s.retentionTime - time.Since(startTimestamp.Timestamp)
 	}
 	return 0
 }
 
-func (s *SlowSet) Run(stopCh <-chan struct{}) {
+func (s *SlowSet[T]) Run(stopCh <-chan struct{}) {
 	for {
 		select {
 		case <-stopCh:
@@ -85,8 +103,8 @@ func (s *SlowSet) Run(stopCh <-chan struct{}) {
 		default:
 			time.Sleep(slowSetSleepDelay)
 			for key, t := range s.workSet {
-				if time.Since(t) > s.retentionTime {
-					s.Remove(key)
+				if time.Since(t.Timestamp) > s.retentionTime {
+					s.RemoveAll(key)
 				}
 			}
 		}

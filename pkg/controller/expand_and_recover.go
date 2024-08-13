@@ -191,7 +191,7 @@ func (ctrl *resizeController) expandAndRecover(pvc *v1.PersistentVolumeClaim, pv
 func (ctrl *resizeController) markForSlowRetry(pvcKey string, resizeStatus v1.ClaimResourceStatus) {
 	if resizeStatus == v1.PersistentVolumeClaimControllerResizeInfeasible ||
 		resizeStatus == v1.PersistentVolumeClaimNodeResizeInfeasible {
-		ctrl.slowSet.Add(pvcKey)
+		ctrl.slowSet.Add(pvcKey, resizeStatus)
 	}
 }
 
@@ -221,12 +221,16 @@ func (ctrl *resizeController) callResizeOnPlugin(
 					return pvc, pv, fmt.Errorf("resizing failed in controller with %v but failed to update PVC %s with: %v", err, klog.KObj(pvc), markExpansionFailedError)
 				}
 			} else {
+				// remove key from slowSet because expansion failed with non-infeasible error
+				ctrl.slowSet.Remove(pvcKey, v1.PersistentVolumeClaimControllerResizeInfeasible)
 				pvc, markExpansionFailedError = ctrl.markControllerExpansionFailedCondition(pvc, err)
 				if markExpansionFailedError != nil {
 					return pvc, pv, fmt.Errorf("resizing failed in controller with %v but failed to update PVC %s with: %v", err, klog.KObj(pvc), markExpansionFailedError)
 				}
 			}
 		} else {
+			// remove key from slowSet because expansion failed with non-final error
+			ctrl.slowSet.Remove(pvcKey, v1.PersistentVolumeClaimControllerResizeInfeasible)
 			// remove key from finalErrorPVCs
 			ctrl.finalErrorPVCs.Delete(pvcKey)
 		}
@@ -234,6 +238,7 @@ func (ctrl *resizeController) callResizeOnPlugin(
 	}
 
 	ctrl.finalErrorPVCs.Delete(pvcKey)
+	ctrl.slowSet.Remove(pvcKey, v1.PersistentVolumeClaimControllerResizeInfeasible)
 
 	klog.V(4).InfoS("Resize volume succeeded, start to update PV's capacity", "PV", klog.KObj(pv))
 

@@ -71,7 +71,7 @@ type resizeController struct {
 
 	// slowSet is used to track PVCs for which expansion failed with infeasible error
 	// and should be retried at slower rate.
-	slowSet *util.SlowSet
+	slowSet *util.SlowSet[v1.ClaimResourceStatus]
 
 	// a cache to store PersistentVolume objects
 	volumes cache.Store
@@ -111,7 +111,7 @@ func NewResizeController(
 		volumes:                pvInformer.Informer().GetStore(),
 		claims:                 pvcInformer.Informer().GetStore(),
 		eventRecorder:          eventRecorder,
-		slowSet:                util.NewSlowSet(maxRetryInterval),
+		slowSet:                util.NewSlowSet[v1.ClaimResourceStatus](maxRetryInterval),
 		finalErrorPVCs:         sets.New[string](),
 		usedPVCs:               newUsedPVCStore(),
 		handleVolumeInUseError: handleVolumeInUseError,
