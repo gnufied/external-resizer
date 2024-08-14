@@ -46,6 +46,8 @@ func NewSlowSet[T ~string](retTime time.Duration) *SlowSet[T] {
 	}
 }
 
+// Add adds a pvcKey to the set with given failureType and
+// adds with the current timestamp if key is not already present.
 func (s *SlowSet[T]) Add(key string, failureType T) bool {
 	s.Lock()
 	defer s.Unlock()
@@ -73,6 +75,9 @@ func (s *SlowSet[T]) RemoveAll(key string) {
 	delete(s.workSet, key)
 }
 
+// Remove removes the key from the set only if key is present and the failureType matches.
+// The reason we are also checking for failure type is because, we don't want controller expansion
+// success to remove the key from the set which was added because of failed node expansion.
 func (s *SlowSet[T]) Remove(key string, failureType T) bool {
 	s.Lock()
 	defer s.Unlock()
