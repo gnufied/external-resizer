@@ -36,8 +36,9 @@ const (
 
 // The return value bool is only used as a sentinel value when function returns without actually performing modification
 func (ctrl *modifyController) modify(pvc *v1.PersistentVolumeClaim, pv *v1.PersistentVolume) (*v1.PersistentVolumeClaim, *v1.PersistentVolume, error, bool) {
-	pvcSpecVacName := pvc.Spec.VolumeAttributesClassName
-	curVacName := pvc.Status.CurrentVolumeAttributesClassName
+	pvcSpecVACName := pvc.Spec.VolumeAttributesClassName
+	currentVacName := pvc.Status.CurrentVolumeAttributesClassName
+
 	pvcKey, err := cache.MetaNamespaceKeyFunc(pvc)
 	if err != nil {
 		return pvc, pv, err, false
@@ -49,36 +50,47 @@ func (ctrl *modifyController) modify(pvc *v1.PersistentVolumeClaim, pv *v1.Persi
 		return pvc, pv, delayModificationErr, false
 	}
 
-	if pvcSpecVacName != nil && curVacName == nil {
-		// First time adding VAC to a PVC
+	if currentModificationInfeasible(pvc) && isVacRolledBack(pvc) {
+		return ctrl.validateVACAndRollback(pvc, pv)
+	}
+
+	if pvcSpecVACName == nil {
+		return pvc, pv, nil, false
+	}
+
+	switch {
+	case currentVacName == nil:
 		return ctrl.validateVACAndModifyVolumeWithTarget(pvc, pv)
-	} else if pvcSpecVacName != nil && curVacName != nil && *pvcSpecVacName != *curVacName {
+	case *currentVacName != *pvcSpecVACName:
 		// Check if PVC in uncertain state
 		_, inUncertainState := ctrl.uncertainPVCs[pvcKey]
 		if !inUncertainState {
 			klog.V(3).InfoS("previous operation on the PVC failed with a final error, retrying")
 			return ctrl.validateVACAndModifyVolumeWithTarget(pvc, pv)
 		} else {
-			vac, err := ctrl.vacLister.Get(*pvcSpecVacName)
+			vac, err := ctrl.vacLister.Get(*pvcSpecVACName)
 			if err != nil {
 				return pvc, pv, err, false
 			}
-			return ctrl.controllerModifyVolumeWithTarget(pvc, pv, vac, pvcSpecVacName)
+			return ctrl.controllerModifyVolumeWithTarget(pvc, pv, vac, pvcSpecVACName)
 		}
 	}
-
-	// Rollback infeasible errors for recovery
-	if pvc.Status.ModifyVolumeStatus != nil && pvc.Status.ModifyVolumeStatus.Status == v1.PersistentVolumeClaimModifyVolumeInfeasible {
-		targetVacName := pvc.Status.ModifyVolumeStatus.TargetVolumeAttributesClassName
-		// Case 1: rollback to nil
-		// Case 2: rollback to previous VAC
-		if (pvcSpecVacName == nil && curVacName == nil && targetVacName != "") || (pvcSpecVacName != nil && curVacName != nil && *pvcSpecVacName == *curVacName && targetVacName != *curVacName) {
-			return ctrl.validateVACAndRollback(pvc, pv)
-		}
-	}
-
-	// No modification required
 	return pvc, pv, nil, false
+}
+
+func isVacRolledBack(pvc *v1.PersistentVolumeClaim) bool {
+	pvcSpecVacName := pvc.Spec.VolumeAttributesClassName
+	curVacName := pvc.Status.CurrentVolumeAttributesClassName
+	targetVacName := pvc.Status.ModifyVolumeStatus.TargetVolumeAttributesClassName
+	// Case 1: rollback to nil
+	// Case 2: rollback to previous VAC
+	return (pvcSpecVacName == nil && curVacName == nil && targetVacName != "") ||
+		(pvcSpecVacName != nil && curVacName != nil &&
+			*pvcSpecVacName == *curVacName && targetVacName != *curVacName)
+}
+
+func currentModificationInfeasible(pvc *v1.PersistentVolumeClaim) bool {
+	return pvc.Status.ModifyVolumeStatus != nil && pvc.Status.ModifyVolumeStatus.Status == v1.PersistentVolumeClaimModifyVolumeInfeasible
 }
 
 // func validateVACAndModifyVolumeWithTarget validate the VAC. The function sets pvc.Status.ModifyVolumeStatus
