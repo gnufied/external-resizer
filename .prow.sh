@@ -10,7 +10,7 @@ export CSI_PROW_BUILD_PLATFORMS="linux amd64 amd64"
 export CSI_PROW_E2E_FOCUS_1_34="\[FeatureGate:VolumeAttributesClass\]"
 
 custom_post_install() {
-    echo "Running custom post install hook..."
+    echo "!!!! Running custom post install hook... !!!!!!!!!!"
 }
 
 export CSI_PROW_DRIVER_POSTINSTALL="custom_post_install"
