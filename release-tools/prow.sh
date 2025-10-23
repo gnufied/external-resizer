@@ -210,6 +210,8 @@ configvar CSI_PROW_DEPLOYMENT_SUFFIX "" "additional suffix in kubernetes-x.yy[su
 # a .prow.sh file and this config variable can be overridden.
 configvar CSI_PROW_DRIVER_INSTALL "install_csi_driver" "name of the shell function which installs the CSI driver"
 
+configvar CSI_PROW_DRIVER_POSTINSTALL "postinstall_csi_driver" "name of the shell function which gets called after CSI driver is installed"
+
 # If CSI_PROW_DRIVER_CANARY is set (typically to "canary", but also
 # version tag. Usually empty. CSI_PROW_HOSTPATH_CANARY is
 # accepted as alternative name because some test-infra jobs
@@ -717,6 +719,10 @@ find_deployment () {
     echo "$file"
 }
 
+postinstall_csi_driver () {
+    echo "********** Running default post install config step **********"
+}
+
 # This installs the CSI driver. It's called with a list of env variables
 # that override the default images. CSI_PROW_DRIVER_CANARY overrides all
 # image versions with that canary version.
@@ -1020,6 +1026,7 @@ run_filter_junit () {
 # Runs the E2E test suite in a sub-shell.
 run_e2e () (
     name="$1"
+    echo "********** Running the e2e ${name} **********"
     shift
 
     install_e2e || die "building e2e.test failed"
@@ -1329,6 +1336,10 @@ main () {
                     fi
                 fi
 
+		if ! ${CSI_PROW_DRIVER_POSTINSTALL} "$images"; then
+		    warn "Running post install failed"
+		fi
+
                 if tests_enabled "parallel"; then
                     # Ignore: Double quote to prevent globbing and word splitting.
                     # shellcheck disable=SC2086
@@ -1386,6 +1397,10 @@ main () {
             # Installing the driver might be disabled.
             if ${CSI_PROW_DRIVER_INSTALL} "$images"; then
                 collect_cluster_info
+
+		if ! ${CSI_PROW_DRIVER_POSTINSTALL} "$images"; then
+		    warn "Running post install failed"
+		fi
 
                 if tests_enabled "parallel-alpha"; then
                     # Ignore: Double quote to prevent globbing and word splitting.
