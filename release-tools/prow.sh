@@ -1025,20 +1025,21 @@ run_filter_junit () {
 
 # shellcheck disable=SC2120
 install_yq_if_missing() {
-  local version="${1:-v4.48.1}"
-  local yq_path="/usr/local/bin/yq"
-  if ! command -v yq &>/dev/null; then
+    local yq_path="${CSI_PROW_BIN}/yq"
+    if [ -e "${yq_path}" ]; then
+	return
+    fi
+    local version="${1:-v4.48.1}"
+
     echo "Installing yq ${version}..."
     if ! curl -fsSL -o "${yq_path}" "https://github.com/mikefarah/yq/releases/download/${version}/yq_linux_amd64"; then
-      echo "Failed to download yq" >&2
-      exit 1
+	echo "Failed to download yq" >&2
+	exit 1
     fi
     chmod +x "${yq_path}"
     echo "yq ${version} installed at ${yq_path}"
-  else
-    echo "yq found, skipping install"
-  fi
 }
+
 # Runs the E2E test suite in a sub-shell.
 run_e2e () (
     name="$1"
