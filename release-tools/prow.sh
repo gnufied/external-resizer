@@ -1023,12 +1023,26 @@ run_filter_junit () {
     run_with_go "${CSI_PROW_GO_VERSION_BUILD}" go run "${RELEASE_TOOLS_ROOT}/filter-junit.go" "$@"
 }
 
+# shellcheck disable=SC2120
+install_yq_if_missing() {
+  local version="${1:-v4.48.1}"
+  local yq_path="/usr/local/bin/yq"
+  if ! command -v yq &>/dev/null; then
+    echo "Installing yq ${version}..."
+    if ! curl -fsSL -o "${yq_path}" "https://github.com/mikefarah/yq/releases/download/${version}/yq_linux_amd64"; then
+      echo "Failed to download yq" >&2
+      exit 1
+    fi
+    chmod +x "${yq_path}"
+    echo "yq ${version} installed at ${yq_path}"
+  else
+    echo "yq found, skipping install"
+  fi
+}
 # Runs the E2E test suite in a sub-shell.
 run_e2e () (
     name="$1"
-    echo "********** Running the e2e ${name} **********"
     shift
-    return 1
 
     install_e2e || die "building e2e.test failed"
     install_ginkgo || die "installing ginkgo failed"
@@ -1252,6 +1266,7 @@ main () {
 
     # Set up work directory.
     ensure_paths
+    install_yq_if_missing
 
     images=
     if ${CSI_PROW_BUILD_JOB}; then
