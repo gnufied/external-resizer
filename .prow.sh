@@ -13,7 +13,7 @@ custom_post_install() {
     echo "Running custom post install hook..."
 }
 
-export CSI_PROW_DRIVER_INSTALL="custom_post_install"
+export CSI_PROW_DRIVER_POSTINSTALL="custom_post_install"
 . release-tools/prow.sh
 main
 

@@ -1028,6 +1028,7 @@ run_e2e () (
     name="$1"
     echo "********** Running the e2e ${name} **********"
     shift
+    return 1
 
     install_e2e || die "building e2e.test failed"
     install_ginkgo || die "installing ginkgo failed"
