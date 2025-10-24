@@ -1355,6 +1355,7 @@ main () {
 
 		if ! ${CSI_PROW_DRIVER_POSTINSTALL} "$images"; then
 		    warn "Running post install failed"
+		    ret=1
 		fi
 
                 if tests_enabled "parallel"; then
