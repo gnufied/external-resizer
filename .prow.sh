@@ -29,7 +29,7 @@ EOF
     cat "${CSI_PROW_WORK}/sample-vac.yaml"
     kubectl create -f "${CSI_PROW_WORK}/sample-vac.yaml"
 
-    info "Dropping into the shell"
+    info "Dropping into the shell, with kubeconfig path ${KUBECONFIG}"
     bash -i
 }
 
