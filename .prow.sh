@@ -28,9 +28,14 @@ EOF
     info "Creating sample VAC class"
     cat "${CSI_PROW_WORK}/sample-vac.yaml"
     kubectl create -f "${CSI_PROW_WORK}/sample-vac.yaml"
+    info "Modifying CSI driver to enable VAC"
+    kubectl get statefulsets csi-hostpathplugin  -o json|jq '(.spec.template.spec.containers[] | select(.name == "hostpath").args) += ["-enable-controller-modify-volume", "--accepted-mutable-parameter-names=e2eVacTest"]'|kubectl apply -f -
 
-    info "Dropping into the shell, with kubeconfig path ${KUBECONFIG}"
-    bash -i
+    info "Rolling out statefulset"
+    kubectl rollout restart sts csi-hostpathplugin -n default
+    # Wait for the rollout to complete
+    info "Waiting for rollout to complete..."
+    kubectl rollout status sts csi-hostpathplugin -n default
 }
 
 export CSI_PROW_DRIVER_POSTINSTALL="custom_post_install"
