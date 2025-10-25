@@ -12,7 +12,7 @@ export CSI_PROW_E2E_FOCUS_1_34="\[FeatureGate:VolumeAttributesClass\]"
 
 custom_post_install() {
     echo "!!!! Running custom post install hook... !!!!!!!!!!"
-    yq -i '.VolumeAttributeClass = {"FromExistingClassName": "testvac"}' "${CSI_PROW_WORK}/test-driver.yaml"
+    yq -i '.VolumeAttributesClass = {"FromExistingClassName": "testvac"}' "${CSI_PROW_WORK}/test-driver.yaml"
     cat "${CSI_PROW_WORK}/test-driver.yaml"
 
     # Create the VAC Class
