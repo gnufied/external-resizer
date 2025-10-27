@@ -1,4 +1,4 @@
-#! /bin/bas
+#! /bin/bash
 export CSI_PROW_KUBERNETES_VERSION="1.34.0"
 export CSI_PROW_KUBERNETES_DEPLOYMENT="1.34"
 export CSI_PROW_E2E_VERSION="release-1.34"
