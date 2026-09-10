@@ -203,17 +203,12 @@ func (ctrl *resizeController) updatePVC(oldObj, newObj any) {
 	oldResizerName := oldPVC.Annotations[util.VolumeResizerKey]
 
 	pvcStatusChanged := false
-	pvcRequestSizeChanged := newReq.Cmp(oldReq) > 0
+	pvcRequestSizeChanged := newReq.Cmp(oldReq) != 0
 
 	newResizeStatus := newPVC.Status.AllocatedResourceStatuses[v1.ResourceStorage]
 	oldResizeStatus := oldPVC.Status.AllocatedResourceStatuses[v1.ResourceStorage]
 	if newResizeStatus != oldResizeStatus {
 		pvcStatusChanged = true
-	}
-
-	// The requested size can be reduced when recovering from an expansion failure.
-	if newReq.Cmp(oldReq) != 0 {
-		pvcRequestSizeChanged = true
 	}
 
 	// We perform additional checks to avoid double processing of PVCs, as we will also receive Update event when:
